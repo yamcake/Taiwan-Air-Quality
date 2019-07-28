@@ -1,35 +1,46 @@
-rm(list=ls()) #remove all objects in the environment
+# Remove all objects in the environment
+rm(list=ls())
+
+# Load packages in bulk
 pacman::p_load(tidyverse, reshape2, car, corrplot, magrittr, lubridate, BaylorEdPsych, mvnmle, lmtest, caret, sandwich, caTools, MLmetrics)
 
+# Initialise Working Directory and get started
 setwd("C:\\Users\\raymo\\OneDrive\\Desktop\\EB5101 - Foundations of Business Analytics\\Assignment")
 DIR = "Assignment 1"
 file = "2015_Air_quality_in_northern_Taiwan.csv"
+data = read.csv(file.path(DIR,file))
 
-data=read.csv(file.path(DIR,file))
+# Set Time column as a POSIXct object
 data$time = as.POSIXct(data$time)
 
+# Check for observations/rows that have missing values across the entire sequence
 missing = data %>%
   filter(!complete.cases(.))
 nrow(missing)
-
 nrow(missing)/nrow(data)
+
+# View structure of dataframe
 str(data)
 
-# Data Cleaning
+# ------------------- DATA PRE-PROCESSING
 cleandata <- data
-cleandata$time <- NULL  #remove un-required variables
-cleandata$station <- NULL #remove un-required variables
 
-#Removal of fields with invalid values
+# It is believed that any relationship between PM2.5 and location / time should 
+# already be captured by the remaining 22 variables. As such, location and time
+# should be removed from further analysis.
+cleandata$time <- NULL
+cleandata$station <- NULL
+
+# Removal of fields with invalid values
 cleandata = as.data.frame(apply(cleandata,2, function(x) ifelse(grepl("x|#|\\*",x),"", x)))
 
-#Replacement of NR values to 0
+# Replacement of NR values to 0
 cleandata$RAINFALL <- ifelse(cleandata$RAINFALL=="NR", 0, cleandata$RAINFALL)
 
-#Removal of fields with "NR"
+# Removal of fields with "NR"
 cleandata = as.data.frame(apply(cleandata,2, function(x) ifelse(x=="NR","", x)))
 
-#Update classes of all fields to numeric
+# Update classes of all fields to numeric
 cleandata=apply(cleandata, c(1,2),function(x) as.numeric(x))
 cleandata=as.data.frame(cleandata)
 
@@ -37,11 +48,6 @@ cleandata=as.data.frame(cleandata)
 missing = cleandata %>%
   filter(!complete.cases(.))
 nrow(missing)
-
-#Check if missing data is MCAR
-#sink("output.txt")
-#LittleMCAR(cleandata)
-#sink()
 
 #Removal of empty fields
 cleandata <- cleandata %>%
@@ -57,11 +63,11 @@ set.seed(1234)
 splitData <- sample.split(cleandata$PM2.5, SplitRatio = 0.7)
 head(splitData); class(splitData)
 
-#create train dataset
+# Create train dataset
 traindata <- cleandata[splitData,]
 nrow(traindata)/nrow(cleandata)
 
-#create test dataset
+# Create test dataset
 testdata <- cleandata[!splitData,]
 nrow(testdata)/nrow(cleandata)
 
@@ -128,54 +134,3 @@ file2 = "predicted_data.csv"
 write.csv(predicted_data, file.path(DIR,file2),row.names=F)
 file3 = "testdata.csv"
 write.csv(testdata, file.path(DIR,file3),row.names=F)
-
-#STOP HERE
-
-final_model_residual <- final_model$residuals
-varfunc
-
-
-final_model = lm(formula = log(PM2.5+1)~ . 
-                 -RAIN_COND -NO2 -WIND_DIREC 
-                 -CH4 -THC -CO -SO2 -WD_HR 
-                 -WIND_SPEED -RH, 
-                 data = traindata)
-summary(final_model)
-
-#Correcting for Heterocedasticity
-
-# Remove sample 102, 103 and 104
-cleandata <- cleandata[-104,]
-cleandata <- cleandata[-103,]
-cleandata <- cleandata[-102,]
-traindata = traindata[-which(final_model$residuals >=3),]
-traindata = traindata[-which(model$residuals <=-3),]
-
-#cleandata$PM2.5new = log(cleandata$PM2.5)
-
-# ------------------- SPLIT SAMPLE TO TRAIN AND TEST
-set.seed(1234)
-
-splitData <- sample.split(cleandata$PM2.5, SplitRatio = 0.7)
-head(splitData); class(splitData)
-
-#create train dataset
-traindata <- cleandata[splitData,]
-nrow(traindata)/nrow(cleandata)
-
-#create test dataset
-testdata <- cleandata[!splitData,]
-nrow(testdata)/nrow(cleandata)
-
-# -------------------------- MODELLING
-#initial model (include all input variables)
-final_model <- lm(formula = PM2.5 ~ . 
-                  -NMHC -WIND_SPEED -CH4 -NOx 
-                  -RAINFALL -THC -NO2 -SO2 -WD_HR 
-                  -WIND_DIREC -UVB -NO, 
-                  data=traindata)
-summary(final_model)
-par(mfrow = c(2, 2))
-plot(final_model,sub.caption = "Residual Check")
-bptest(final_model)
-plot(density(final_model$residuals))
