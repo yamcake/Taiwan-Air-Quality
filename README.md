@@ -1,4 +1,4 @@
-# Prediction of PM2.5 in Northern Taiwan by Multiple Linear Regression
+# Prediction of Atmospheric Particulate Matter (PM2.5) in Northern Taiwan by Multiple Linear Regression
 
 This project was a Linear Regression assignment as part of my Foundations of Business Analytics module from my Masters at NUS - ISS.
 
